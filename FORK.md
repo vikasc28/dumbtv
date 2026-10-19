@@ -151,6 +151,55 @@ adb push wallpaper.jpg /sdcard/Pictures/dumbtv/
 
 The launcher still has no `INTERNET` permission.
 
+### Generating a plain frost wallpaper
+
+The pane only reads as glass over something, but it does not need a photo — a
+soft radial gradient is enough, and it keeps tile artwork the brightest thing on
+screen. One command, no image editor:
+
+```
+ffmpeg -f lavfi -i "gradients=s=1920x1080:c0=0x8a8b8f:c1=0x55565b:type=radial:x0=960:y0=380:nb_colors=2:d=1" \
+       -vf "gblur=sigma=50,noise=alls=3:allf=t+u" -frames:v 1 frost-grey.png
+```
+
+`c0` is the lit centre and `c1` the corners; put `y0` above centre so the light
+sits behind the panel's top edge. The `gblur` kills gradient banding on a TV
+panel and the light `noise` stops the remaining flat areas from posterising.
+Keep the two colours close together — a neutral grey a few steps apart reads as
+a translucent pane, where a wide or saturated spread reads as a coloured
+backdrop competing with the tile artwork.
+
+Set **Image dim to 0%** for this. The default 40% black overlay is tuned for a
+bright photo and crushes a dark gradient back to flat black, which looks
+identical to the `black` background.
+
+#### A light rounded slab
+
+For the Apple-keynote shape — a cream rounded panel standing in a bright room —
+`geq` gives the rounded-rectangle alpha mask in one expression, so this still
+needs no image editor:
+
+```
+ffmpeg \
+ -f lavfi -i "gradients=s=1920x1080:c0=0xd4cfc7:c1=0x9b968e:type=radial:x0=960:y0=620:nb_colors=2:d=1" \
+ -f lavfi -i "gradients=s=1920x1080:c0=0xfcf9f4:c1=0xe2ded6:type=radial:x0=900:y0=300:nb_colors=2:d=1" \
+ -filter_complex "[0:v]gblur=sigma=60[base]; \
+ [1:v]format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='255*lte(hypot(max(abs(X-960)-726,0),max(abs(Y-540)-420,0)),64)'[slab]; \
+ [base][slab]overlay=0:0,gblur=sigma=1.2,noise=alls=2:allf=t+u" \
+ -frames:v 1 frost-slab.png
+```
+
+The alpha expression is a rounded-rect distance test: `726`/`420` are the half
+width and half height minus the corner radius, and `64` is that radius. The
+trailing `gblur=sigma=1.2` antialiases the corners, which `geq` produces hard.
+
+Turn **Grid panel off** with this one. The wallpaper's slab already is the
+panel, and leaving both on draws two offset rounded rectangles.
+
+Note the launcher's text is white throughout (`Ui.TEXT`, plus the date at 60%
+and the row headers at 40%), so a wallpaper this light washes it out. Either
+raise Image dim or darken those constants.
+
 ## New options
 
 Both appear in Options, right after Accent color:
