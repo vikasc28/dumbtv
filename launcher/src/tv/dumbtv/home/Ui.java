@@ -14,7 +14,6 @@ final class Ui {
     static final int MUTED = 0x99FFFFFF;
     static final int FAINT = 0x66FFFFFF;
     static final int SURFACE = 0xFF1C1D21;
-    static final int PANEL = 0x14FFFFFF;
     static final int DIALOG = android.R.style.Theme_DeviceDefault_Dialog_Alert;
     static final Typeface LIGHT = Typeface.create("sans-serif-light", Typeface.NORMAL);
     static final Typeface MEDIUM = Typeface.create("sans-serif-medium", Typeface.NORMAL);
@@ -43,6 +42,19 @@ final class Ui {
         GradientDrawable d = new GradientDrawable();
         d.setColor(color);
         d.setCornerRadius(radius);
+        return d;
+    }
+
+    /**
+     * A frosted pane: a white wash fading downward inside a hairline edge. Android 11 has no
+     * backdrop blur (RenderEffect and setBackgroundBlurRadius are API 31), so the glass comes from
+     * translucency and the lit edge rather than from blurring what sits behind.
+     */
+    static GradientDrawable glass(Context c, float radius) {
+        GradientDrawable d = new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM, new int[] {0x26FFFFFF, 0x0DFFFFFF});
+        d.setCornerRadius(radius);
+        d.setStroke(Math.max(1, dp(c, 1)), 0x33FFFFFF);
         return d;
     }
 

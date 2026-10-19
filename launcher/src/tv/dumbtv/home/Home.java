@@ -533,7 +533,7 @@ public final class Home extends Activity {
         if ((apps.grid != null) != gridWanted()) rebuild();
         if (apps.grid != null) {
             apps.grid.setBackground(
-                    "on".equals(cfg.get(Config.PANEL)) ? Ui.round(Ui.PANEL, dp(28)) : null);
+                    "on".equals(cfg.get(Config.PANEL)) ? Ui.glass(this, dp(28)) : null);
         }
         int accent = cfg.accent();
         for (TextView c : chips) Ui.focusStyle(c, accent, 0x14FFFFFF, dp(18));

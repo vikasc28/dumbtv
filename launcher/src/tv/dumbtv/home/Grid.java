@@ -28,6 +28,37 @@ final class Grid extends ViewGroup {
         return gap;
     }
 
+    /**
+     * Walks the tiles in reading order rather than by geometry. Android's own search looks for a
+     * view lying to the right of the focused one, so the last tile on a line is a dead end and the
+     * event escapes upward to the Options/Settings chips. Here right from the end of a line lands
+     * on the first tile of the next, and a line shorter than the others still catches a press from
+     * the column above it. Up from the first line and down from the last still bubble out, so the
+     * chips and the Inputs row stay reachable.
+     */
+    @Override
+    public View focusSearch(View focused, int direction) {
+        int i = indexOfChild(focused), n = getChildCount();
+        if (i >= 0 && n > 0) {
+            int cols = Math.min(cols(), n), last = n - 1;
+            switch (direction) {
+                case FOCUS_RIGHT:
+                    return getChildAt(i < last ? i + 1 : i);
+                case FOCUS_LEFT:
+                    return getChildAt(i > 0 ? i - 1 : i);
+                case FOCUS_DOWN:
+                    if (i / cols < last / cols) return getChildAt(Math.min(i + cols, last));
+                    break;
+                case FOCUS_UP:
+                    if (i >= cols) return getChildAt(i - cols);
+                    break;
+                default:
+                    break;
+            }
+        }
+        return super.focusSearch(focused, direction);
+    }
+
     @Override
     protected void onMeasure(int widthSpec, int heightSpec) {
         int width = MeasureSpec.getSize(widthSpec);
