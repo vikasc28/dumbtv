@@ -79,9 +79,77 @@ On a 1920x1080 stick at density 320 with medium tiles this gives 4 columns.
 
 ## 3. Grid panel
 
-The grid gets a rounded translucent fill (`Ui.PANEL`, white at 8%) with a 28dp
-radius, inset 40dp from the screen edge, padded so tiles still line up with the
-`APPS` title at 56dp.
+The grid gets a rounded frosted pane (`Ui.glass`) with a 28dp radius, inset 40dp
+from the screen edge, padded so tiles still line up with the `APPS` title at
+56dp. It is a white wash fading top-to-bottom (15% to 5%) inside a 1dp hairline
+edge at 20%, rather than a flat fill.
+
+Android 11 has no backdrop blur — `RenderEffect` and
+`Window.setBackgroundBlurRadius` are both API 31 — so the glass comes from
+translucency and the lit edge, not from blurring what sits behind. It therefore
+only reads as glass over a wallpaper (see fix 5); on a flat black background it
+is just a slightly lighter rectangle.
+
+## 4. Grid focus navigates in reading order
+
+Right from the last tile on a line jumped up to the Options/Settings chips.
+Android's focus search is geometric: it looks for a view lying to the right of
+the focused one, finds nothing, and the event escapes upward.
+
+`Grid.focusSearch` now walks its own children by index instead:
+
+- right/left move to the next/previous tile, so the end of a line continues on
+  the next one; at the very first and last tile the press is swallowed rather
+  than escaping sideways
+- down from a line whose column is empty on the next line still lands on that
+  line's last tile, instead of skipping the grid entirely
+- up from the first line and down from the last fall through to
+  `super.focusSearch`, so the chips above and the Inputs row below stay
+  reachable
+
+Note that `ScrollView` handles up/down in `executeKeyEvent` before the focus
+chain is consulted, which is why vertical cases also need `Home`'s own
+`column.focusSearch` hook rather than `Grid` alone.
+
+Do not test this with `adb shell input keyevent`: injected arrow keys reach the
+focused view, but they are easy to misread — a key you press on the real remote
+in the same window looks identical in a screenshot.
+
+## 5. Wallpapers readable on Fire OS 8
+
+Upstream reads wallpapers from the app's own external folder and documents
+pushing them there:
+
+```
+adb push *.jpg /sdcard/Android/data/tv.dumbtv.home/files/wallpapers/
+```
+
+On Fire OS 8 that path is unreachable — `adb` gets `Permission denied` on
+`/sdcard/Android/data` for read as well as write, so a host cannot deliver a
+wallpaper at all, and the `Background -> Image file` option has nothing to show.
+
+`Config.wallpapers()` now scans a second folder as well:
+
+```
+/sdcard/Pictures/dumbtv/        <- readable by the app, writable over adb
+```
+
+Both folders are read, the app's own one first, and the combined list is sorted
+by name as before. This costs one permission:
+
+```xml
+<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+```
+
+It is a runtime permission, so grant it after installing:
+
+```
+adb shell pm grant tv.dumbtv.home android.permission.READ_EXTERNAL_STORAGE
+adb shell mkdir -p /sdcard/Pictures/dumbtv
+adb push wallpaper.jpg /sdcard/Pictures/dumbtv/
+```
+
+The launcher still has no `INTERNET` permission.
 
 ## New options
 

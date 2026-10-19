@@ -2,6 +2,7 @@ package tv.dumbtv.home;
 
 import android.content.Context;
 import android.graphics.Color;
+import android.os.Environment;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -273,15 +274,30 @@ final class Config {
         return tagged ? fit : null;
     }
 
+    /**
+     * Wallpaper folders in priority order. The app's own external dir is first, but Fire OS 8
+     * refuses adb access to /sdcard/Android/data, so a host cannot deliver a file there. The
+     * public Pictures folder is readable by the app and writable over adb, which makes it the
+     * only working route on that platform.
+     */
+    private List<File> wallpaperDirs() {
+        List<File> dirs = new ArrayList<>();
+        dirs.add(new File(dir, WALLPAPERS));
+        dirs.add(new File(Environment.getExternalStorageDirectory(), "Pictures/dumbtv"));
+        return dirs;
+    }
+
     List<File> wallpapers() {
         List<File> out = new ArrayList<>();
-        File[] files = new File(dir, WALLPAPERS).listFiles();
-        if (files == null) return out;
-        for (File f : files) {
-            String n = f.getName().toLowerCase(Locale.ROOT);
-            if (f.isFile() && (n.endsWith(".jpg") || n.endsWith(".jpeg") || n.endsWith(".png")
-                    || n.endsWith(".webp"))) {
-                out.add(f);
+        for (File from : wallpaperDirs()) {
+            File[] files = from.listFiles();
+            if (files == null) continue;
+            for (File f : files) {
+                String n = f.getName().toLowerCase(Locale.ROOT);
+                if (f.isFile() && (n.endsWith(".jpg") || n.endsWith(".jpeg") || n.endsWith(".png")
+                        || n.endsWith(".webp"))) {
+                    out.add(f);
+                }
             }
         }
         Collections.sort(out);

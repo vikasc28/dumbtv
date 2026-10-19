@@ -17,6 +17,9 @@
     <!-- Fire OS 8 (Android 11) only: exempts the Guard's HOME swap from the
          background-activity-start block. See docs/GOTCHAS.md "Fire OS 8". -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- Only to read a wallpaper from Pictures/dumbtv. Fire OS 8 refuses adb access to
+         /sdcard/Android/data, so the app's own folder cannot be filled from a host. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
     <application
         android:label="@string/app_name"
