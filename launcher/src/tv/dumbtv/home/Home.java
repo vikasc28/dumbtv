@@ -104,21 +104,42 @@ public final class Home extends Activity {
     private final class Row {
         final String kind;
         final TextView title;
+        /** The view that sits in the column: the strip's scroller, or the grid itself. */
+        final View container;
         final HorizontalScrollView scroll;
-        final LinearLayout strip;
+        final Grid grid;
+        final ViewGroup strip;
         List<Item> all = new ArrayList<>();
 
-        Row(String kind, String name, LinearLayout parent) {
+        Row(String kind, String name, LinearLayout parent, boolean asGrid) {
             this.kind = kind;
             int edge = dp(56), bleed = dp(14);
             title = Ui.text(Home.this, 12, Ui.FAINT, Ui.MEDIUM);
             title.setText(name.toUpperCase(Locale.ROOT));
             title.setLetterSpacing(0.14f);
             title.setPadding(edge, dp(20), edge, dp(2));
-            strip = new LinearLayout(Home.this);
-            strip.setClipChildren(false);
-            strip.setClipToPadding(false);
-            strip.setPadding(bleed, dp(12), bleed, dp(8));
+            parent.addView(title, new LinearLayout.LayoutParams(MATCH, WRAP));
+
+            if (asGrid) {
+                int inset = dp(40), pad = edge - inset;
+                grid = new Grid(Home.this, dp(18));
+                grid.setPadding(pad, pad, pad, pad);
+                scroll = null;
+                strip = grid;
+                container = grid;
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(MATCH, WRAP);
+                lp.leftMargin = inset;
+                lp.rightMargin = inset;
+                parent.addView(grid, lp);
+                return;
+            }
+
+            grid = null;
+            LinearLayout line = new LinearLayout(Home.this);
+            line.setClipChildren(false);
+            line.setClipToPadding(false);
+            line.setPadding(bleed, dp(12), bleed, dp(8));
+            strip = line;
             scroll = new HorizontalScrollView(Home.this) {
                 /** Keeps the focused tile centered, except near either end of the row. */
                 @Override
@@ -135,15 +156,15 @@ public final class Home extends Activity {
             scroll.setClipChildren(false);
             scroll.setClipToPadding(false);
             scroll.setPadding(edge - bleed, 0, edge - bleed, 0);
-            scroll.addView(strip, new FrameLayout.LayoutParams(WRAP, WRAP));
-            parent.addView(title, new LinearLayout.LayoutParams(MATCH, WRAP));
+            scroll.addView(line, new FrameLayout.LayoutParams(WRAP, WRAP));
+            container = scroll;
             parent.addView(scroll, new LinearLayout.LayoutParams(MATCH, WRAP));
         }
 
         void setVisible(boolean on) {
             int v = on ? View.VISIBLE : View.GONE;
             title.setVisibility(v);
-            scroll.setVisibility(v);
+            container.setVisibility(v);
         }
     }
 
@@ -184,7 +205,12 @@ public final class Home extends Activity {
             loadApps(null);
             return;
         }
-        int fit = getResources().getDisplayMetrics().widthPixels / (cardSize()[0] + dp(18)) + 1;
+        int[] size = cardSize();
+        int cols = getResources().getDisplayMetrics().widthPixels / (size[0] + dp(18)) + 1;
+        int lines = apps.grid == null
+                ? 1
+                : Math.max(1, getResources().getDisplayMetrics().heightPixels / (size[1] + dp(44)));
+        int fit = cols * lines;
         for (Item it : Catalog.visible(cfg, Catalog.APPS, apps.all)) {
             if (fit-- <= 0) break;
             Catalog.art(getPackageManager(), it);
@@ -306,12 +332,30 @@ public final class Home extends Activity {
         return Math.max(0, Math.min(range, stopFor(at, rows, page.getHeight())));
     }
 
-    /** Title top and strip bottom of each visible row, in {@code content}'s coordinates. */
+    /**
+     * Title top and strip bottom of each visible row, in {@code content}'s coordinates. A grid
+     * contributes one block per line, so a press down stops at the next line rather than paging.
+     */
     private List<int[]> rowBlocks(View content) {
         List<int[]> rows = new ArrayList<>();
         for (Row row : new Row[] {apps, inputs}) {
-            if (row.scroll.getVisibility() != View.VISIBLE) continue;
-            rows.add(new int[] {topIn(row.title, content), topIn(row.scroll, content) + row.scroll.getHeight()});
+            if (row.container.getVisibility() != View.VISIBLE) continue;
+            int titleTop = topIn(row.title, content);
+            int base = topIn(row.container, content);
+            Grid grid = row.grid;
+            if (grid == null || grid.getChildCount() == 0) {
+                rows.add(new int[] {titleTop, base + row.container.getHeight()});
+                continue;
+            }
+            int cols = grid.cols(), n = grid.getChildCount();
+            for (int i = 0; i < n; i += cols) {
+                View first = grid.getChildAt(i);
+                boolean last = i + cols >= n;
+                rows.add(new int[] {
+                    i == 0 ? titleTop : base + first.getTop() - grid.gap(),
+                    last ? base + grid.getHeight() : base + first.getBottom(),
+                });
+            }
         }
         return rows;
     }
@@ -433,13 +477,21 @@ public final class Home extends Activity {
         head.addView(chip("Settings", v -> openSettings()));
         column.addView(head, new LinearLayout.LayoutParams(MATCH, WRAP));
 
-        apps = new Row(Catalog.APPS, "Apps", column);
-        inputs = new Row(Catalog.INPUTS, "Inputs", column);
+        apps = new Row(Catalog.APPS, "Apps", column, gridWanted());
+        inputs = new Row(Catalog.INPUTS, "Inputs", column, false);
         return root;
     }
 
-    /** The child of {@code strip} horizontally closest to {@code from}, or null when empty. */
-    private static View nearest(LinearLayout strip, View from) {
+    private boolean gridWanted() {
+        return "grid".equals(cfg.get(Config.LAYOUT));
+    }
+
+    /** The child of {@code strip} on its first line horizontally closest to {@code from}. */
+    private static View nearest(ViewGroup strip, View from) {
+        int top = Integer.MAX_VALUE;
+        for (int i = 0; i < strip.getChildCount(); i++) {
+            top = Math.min(top, strip.getChildAt(i).getTop());
+        }
         int[] at = new int[2];
         from.getLocationOnScreen(at);
         int x = at[0] + from.getWidth() / 2;
@@ -447,6 +499,7 @@ public final class Home extends Activity {
         int bestGap = Integer.MAX_VALUE;
         for (int i = 0; i < strip.getChildCount(); i++) {
             View c = strip.getChildAt(i);
+            if (c.getTop() != top) continue;
             c.getLocationOnScreen(at);
             int gap = Math.abs(at[0] + c.getWidth() / 2 - x);
             if (gap < bestGap) {
@@ -477,12 +530,27 @@ public final class Home extends Activity {
 
     private void apply() {
         applied = cfg.version();
+        if ((apps.grid != null) != gridWanted()) rebuild();
+        if (apps.grid != null) {
+            apps.grid.setBackground(
+                    "on".equals(cfg.get(Config.PANEL)) ? Ui.round(Ui.PANEL, dp(28)) : null);
+        }
         int accent = cfg.accent();
         for (TextView c : chips) Ui.focusStyle(c, accent, 0x14FFFFFF, dp(18));
         render(apps);
         render(inputs);
         background();
         tick();
+    }
+
+    /** Rebuilds the view tree when the apps layout switches between grid and row. */
+    private void rebuild() {
+        List<Item> keptApps = apps.all, keptInputs = inputs.all;
+        chips.clear();
+        setContentView(build());
+        apps.all = keptApps;
+        inputs.all = keptInputs;
+        landed = false;
     }
 
     /** Rebuilds the app list, keeping loaded art for every package except {@code changed}. */
@@ -534,7 +602,7 @@ public final class Home extends Activity {
                 return true;
             });
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(WRAP, WRAP);
-            lp.rightMargin = dp(18);
+            lp.rightMargin = row.grid == null ? dp(18) : 0;
             row.strip.addView(t, lp);
             if (it.id.equals(keep)) restore = index;
             index++;
@@ -572,8 +640,8 @@ public final class Home extends Activity {
     }
 
     private void focusFirst() {
-        apps.scroll.scrollTo(0, 0);
-        inputs.scroll.scrollTo(0, 0);
+        if (apps.scroll != null) apps.scroll.scrollTo(0, 0);
+        if (inputs.scroll != null) inputs.scroll.scrollTo(0, 0);
         View first = apps.strip.getChildAt(0);
         if (first == null) first = inputs.strip.getChildAt(0);
         landed = apps.strip.getChildCount() > 0;
@@ -715,7 +783,7 @@ public final class Home extends Activity {
     }
 
     private void shift(int by) {
-        LinearLayout strip = (LinearLayout) moving.getParent();
+        ViewGroup strip = (ViewGroup) moving.getParent();
         int from = strip.indexOfChild(moving), to = from + by;
         if (to < 0 || to >= strip.getChildCount()) return;
         ViewGroup.LayoutParams lp = moving.getLayoutParams();
@@ -728,7 +796,7 @@ public final class Home extends Activity {
         Tile t = moving;
         moving = null;
         t.setMoving(false);
-        LinearLayout strip = (LinearLayout) t.getParent();
+        ViewGroup strip = (ViewGroup) t.getParent();
         if (strip == null) return;
         List<String> ids = new ArrayList<>();
         for (int i = 0; i < strip.getChildCount(); i++) ids.add(((Tile) strip.getChildAt(i)).item.id);

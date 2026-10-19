@@ -14,6 +14,10 @@
     <uses-permission android:name="android.permission.REORDER_TASKS"
         android:maxSdkVersion="27" />
 
+    <!-- Fire OS 8 (Android 11) only: exempts the Guard's HOME swap from the
+         background-activity-start block. See docs/GOTCHAS.md "Fire OS 8". -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
     <application
         android:label="@string/app_name"
         android:icon="@drawable/icon"

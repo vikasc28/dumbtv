@@ -1,5 +1,9 @@
 # dumbtv
 
+> **This is a fork.** It adds a wrapping app grid, a rounded panel behind it, and
+> the manifest change that makes the HOME takeover work on Fire OS 8 (Android 11).
+> What changed, why, and how to build it: **[FORK.md](FORK.md)**.
+
 Your TV should do what you paid for: your apps, your HDMI inputs, and nothing
 else. No ads from the TV itself, no watch tracking, no update you did not ask
 for. dumbtv applies that over ADB from another machine — **no root**, nothing

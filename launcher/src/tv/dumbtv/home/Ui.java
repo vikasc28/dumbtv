@@ -14,6 +14,7 @@ final class Ui {
     static final int MUTED = 0x99FFFFFF;
     static final int FAINT = 0x66FFFFFF;
     static final int SURFACE = 0xFF1C1D21;
+    static final int PANEL = 0x14FFFFFF;
     static final int DIALOG = android.R.style.Theme_DeviceDefault_Dialog_Alert;
     static final Typeface LIGHT = Typeface.create("sans-serif-light", Typeface.NORMAL);
     static final Typeface MEDIUM = Typeface.create("sans-serif-medium", Typeface.NORMAL);
