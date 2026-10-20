@@ -53,7 +53,7 @@ final class Config {
         }
     }
 
-    static final Choice ACCENT = new Choice("accent", "Accent color", "blue",
+    static final Choice ACCENT = new Choice("accent", "Accent color", "white",
             new String[] {"white", "blue", "cyan", "green", "amber", "red", "pink", "violet"},
             new String[] {"White", "Blue", "Cyan", "Green", "Amber", "Red", "Pink", "Violet"});
     static final Choice TILES = new Choice("tiles", "Tile size", "medium",
@@ -74,14 +74,14 @@ final class Config {
     static final Choice INPUTS = new Choice("inputs", "Inputs row", "on",
             new String[] {"on", "off"},
             new String[] {"Shown", "Hidden"});
-    static final Choice BACKGROUND = new Choice("background", "Background", "black",
+    static final Choice BACKGROUND = new Choice("background", "Background", "image",
             new String[] {"black", "graphite", "midnight", "image"},
             new String[] {"Black", "Graphite", "Midnight", "Image file"});
-    static final Choice DIM = new Choice("dim", "Image dim", "40",
+    static final Choice DIM = new Choice("dim", "Image dim", "0",
             new String[] {"0", "20", "40", "60", "80"},
             new String[] {"0%", "20%", "40%", "60%", "80%"});
 
-    static final Choice ROTATE = new Choice("rotate", "Wallpaper rotation", "off",
+    static final Choice ROTATE = new Choice("rotate", "Wallpaper rotation", "daytime",
             new String[] {"off", "visit", "hourly", "daily", "daytime"},
             new String[] {"Off", "Every return home", "Every hour", "Every day", "By time of day"});
 
@@ -213,6 +213,13 @@ final class Config {
     void setList(String key, List<String> items) {
         // String.join is Android 8+; TextUtils.join keeps Fire OS 6 (Android 7.1) working.
         set(key, TextUtils.join(",", items));
+    }
+
+    /** Puts every Choice back to its default, leaving order, names and hidden tiles alone. */
+    void resetChoices() {
+        for (Choice c : CHOICES) values.remove(c.key);
+        version++;
+        save();
     }
 
     void removePrefix(String... prefixes) {

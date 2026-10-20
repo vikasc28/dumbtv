@@ -216,6 +216,42 @@ panel row dims when the layout is `row`, since it does not apply there.
 The Inputs row is deliberately left as a horizontal strip — there are rarely
 enough inputs to wrap.
 
+## Reset settings
+
+A second reset row sits under upstream's "Reset order, names and hidden tiles":
+
+| Row | Clears |
+|---|---|
+| Reset order, names and hidden tiles | `name.`, `apps.`, `inputs.` keys (upstream) |
+| **Reset settings** | every `Config.CHOICES` key, so each falls back to its default |
+
+The two are deliberately separate: one is about *which* tiles you see and what
+they are called, the other about how the screen looks. Neither touches the
+other, so re-theming never costs you a curated app list.
+
+Defaults are repinned to this fork's look, which is what makes the row useful —
+reset lands on the configuration below rather than on upstream's black
+background:
+
+| Key | Upstream default | Here |
+|---|---|---|
+| `accent` | `blue` | `white` |
+| `background` | `black` | `image` |
+| `dim` | `40` | `0` |
+| `rotate` | `off` | `daytime` |
+
+`background=image` with no wallpaper present degrades to opaque black (the
+`BACKGROUNDS` entry for `image`), so the new default is safe on a device that
+has never had a wallpaper pushed.
+
+Wallpapers must be **PNG, or a baseline JPEG**. A 735x490 *progressive* JPEG
+pushed to the wallpaper folder was listed and selected correctly but drew
+nothing — the screen stayed at the background color — while a PNG in the same
+folder rendered immediately. `BitmapFactory` is the likely culprit rather than
+anything in this fork, so if a wallpaper refuses to appear, re-save it as PNG
+before debugging the launcher.
+
+
 ---
 
 ## 6. Changing settings from a host on Fire OS 8
