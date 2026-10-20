@@ -218,6 +218,42 @@ enough inputs to wrap.
 
 ---
 
+## 6. Changing settings from a host on Fire OS 8
+
+`home.conf` lives next to the app's own files, under
+`/sdcard/Android/data/tv.dumbtv.home/files/`. Fire OS 8 denies adb that path for
+reading as well as writing, so upstream's "pull it, edit it, push it back" route
+does not exist on this platform and every setting has to be changed with the
+remote. That is fine for one toggle and painful for a batch.
+
+`Config` now also looks for a `home.conf` in the public wallpaper folder, folds
+whatever keys it finds into the real one on load, and then consumes it:
+
+```
+printf 'background=image\ndim=0\nlayout=grid\npanel=on\n' > home.conf
+adb push home.conf /sdcard/Pictures/dumbtv/
+adb shell am force-stop tv.dumbtv.home        # next launch picks it up
+```
+
+Only the keys present in the drop change; everything else is left alone. It is
+consumed rather than layered so it cannot shadow the Options UI — a key left
+sitting in a permanent override file would silently undo every on-screen change
+to it.
+
+One wrinkle: under scoped storage the app often cannot delete a file the host
+wrote, and the delete failure is logged rather than fatal. The drop is then
+re-applied on each launch, which is harmless but does mask Options for those
+keys, so **delete it from the host once it has been picked up**:
+
+```
+adb shell rm -f /sdcard/Pictures/dumbtv/home.conf
+```
+
+Note that `wallpapers()` filters on image extensions, so a `home.conf` sharing
+the wallpaper folder is never mistaken for a wallpaper.
+
+---
+
 ## Build and install
 
 ```bash
@@ -259,4 +295,5 @@ Reverse the whole thing with `bash launcher/install.sh --undo`.
   it means uninstall-then-install — which **deletes `home.conf`**, so hidden
   tiles, renames and order go back to default.
 - **`adb` cannot read or write `/sdcard/Android/data` on Fire OS 8**, so
-  `home.conf` cannot be pushed or pulled. Configure on screen via Options.
+  `home.conf` cannot be pushed or pulled directly. Configure on screen via
+  Options, or drop a partial `home.conf` in `Pictures/dumbtv` (section 6).

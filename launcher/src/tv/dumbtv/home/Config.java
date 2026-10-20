@@ -102,8 +102,10 @@ final class Config {
 
     final File dir;
     private final File file;
+    private final File inbox;
     private final Map<String, String> values = new LinkedHashMap<>();
     private long signature = Long.MIN_VALUE;
+    private long drained = Long.MIN_VALUE;
     private int version;
     private long visits;
 
@@ -116,6 +118,7 @@ final class Config {
         File external = c.getExternalFilesDir(null);
         dir = external != null ? external : c.getFilesDir();
         file = new File(dir, FILE);
+        inbox = new File(Environment.getExternalStorageDirectory(), "Pictures/dumbtv/" + FILE);
         refresh();
     }
 
@@ -126,16 +129,36 @@ final class Config {
 
     void refresh() {
         long sig = file.lastModified() * 31 + file.length();
-        if (sig == signature) return;
+        if (sig == signature && !inbox.isFile()) return;
         signature = sig;
         values.clear();
-        if (file.isFile()) read();
+        if (file.isFile()) read(file);
         version++;
+        drain();
     }
 
-    private void read() {
+    /**
+     * Folds a {@code home.conf} left in the public wallpaper folder into the real one, then
+     * deletes it. Fire OS 8 refuses adb access to /sdcard/Android/data, so this is the only way
+     * a host can change a setting; consuming the file keeps it from shadowing the Options UI.
+     */
+    private void drain() {
+        if (!inbox.isFile()) return;
+        long sig = inbox.lastModified() * 31 + inbox.length();
+        if (sig == drained) return;
+        drained = sig;
+        String fingerprint = values.toString();
+        read(inbox);
+        if (!inbox.delete()) Log.w("dumbtv", "could not delete " + inbox);
+        if (!fingerprint.equals(values.toString())) {
+            version++;
+            save();
+        }
+    }
+
+    private void read(File from) {
         try (BufferedReader r = new BufferedReader(
-                new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
+                new InputStreamReader(new FileInputStream(from), StandardCharsets.UTF_8))) {
             for (String line; (line = r.readLine()) != null; ) {
                 line = line.trim();
                 int eq = line.indexOf('=');
@@ -143,7 +166,7 @@ final class Config {
                 values.put(line.substring(0, eq).trim(), line.substring(eq + 1).trim());
             }
         } catch (IOException e) {
-            Log.w("dumbtv", "could not read " + file, e);
+            Log.w("dumbtv", "could not read " + from, e);
         }
     }
 
