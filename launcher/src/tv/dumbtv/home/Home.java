@@ -755,6 +755,9 @@ public final class Home extends Activity {
         }
         Locale locale = Locale.getDefault();
         date.setText(DateFormat.format(DateFormat.getBestDateTimePattern(locale, "EEEEdMMMM"), now));
+        // which box this is, when one remote room has a TV and a stick both running this launcher
+        String name = Settings.Global.getString(getContentResolver(), Settings.Global.DEVICE_NAME);
+        if (name != null && !name.isEmpty()) date.append("  ·  " + name);
         // hourly and time-of-day rotations change while the screen stays open; a no-op otherwise
         background();
     }
