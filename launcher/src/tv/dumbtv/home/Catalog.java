@@ -5,10 +5,16 @@ import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
 import android.media.tv.TvContract;
 import android.media.tv.TvInputInfo;
 import android.media.tv.TvInputManager;
+import android.os.Environment;
 import android.text.TextUtils;
+import java.io.File;
 
 import java.text.Collator;
 import java.util.ArrayList;
@@ -53,6 +59,12 @@ final class Catalog {
     /** Loads a banner, or an icon when the app ships no banner. Slow: call off the UI thread. */
     static void art(PackageManager pm, Item it) {
         if (it.info == null) return;
+        File custom = new File(Environment.getExternalStorageDirectory(), "Pictures/dumbtv/banners/" + it.id + ".png");
+        Bitmap own = custom.isFile() ? BitmapFactory.decodeFile(custom.getPath()) : null;
+        if (own != null) {
+            it.banner = new BitmapDrawable(Resources.getSystem(), own);
+            return;
+        }
         it.banner = it.info.loadBanner(pm);
         if (it.banner == null) it.icon = it.info.loadIcon(pm);
     }

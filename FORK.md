@@ -200,6 +200,24 @@ Note the launcher's text is white throughout (`Ui.TEXT`, plus the date at 60%
 and the row headers at 40%), so a wallpaper this light washes it out. Either
 raise Image dim or darken those constants.
 
+## 9. Custom banners
+
+A PNG at `/sdcard/Pictures/dumbtv/banners/<package>.png` replaces that app's
+banner (`Catalog.art`); without one the APK's own banner or icon is used, as
+upstream. It is read from the same public folder as the wallpapers, so no new
+permission. 16:9, 640x360 for a 1080p screen. Example: TizenTube shown as YouTube,
+from an SVG logo centred on near-black:
+
+```
+magick -background none -density 1200 youtubeIcon.svg -resize x150 logo.png
+magick -size 640x360 xc:'#0f0f0f' logo.png -gravity center -composite -depth 8 PNG32:banner.png
+adb push banner.png /sdcard/Pictures/dumbtv/banners/io.gh.reisxd.tizentube.cobalt.png
+printf 'name.io.gh.reisxd.tizentube.cobalt=YouTube\n' > home.conf   # rename via section 6
+adb push home.conf /sdcard/Pictures/dumbtv/
+```
+
+A banner is loaded once per launch; restart the launcher after pushing a new one.
+
 ## New options
 
 Both appear in Options, right after Accent color:
