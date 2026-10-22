@@ -266,7 +266,8 @@ OS answers ("Could not open that"); Amazon's own switcher answers
 `tvinput://tunenow?inputId=...` but requires `com.amazon.tv.permission.TUNE_INPUT`,
 which is `signature|amazon`. Watch starts without NEW_TASK/RESET_TASK flags: with
 them it closed straight away on the TV (most likely because it joined the
-singleTask launcher's task). Back returns home.
+singleTask launcher's task). Back returns home. HDMI-CEC device entries (an input with a parent, such as "Fire TV
+Stick" under HDMI 1) are left out, so each port is listed once.
 
 Not ported: the floating spring-animated glass highlight, the cinematic
 backdrop, themes and module cards. The dock is fixed at four tiles.

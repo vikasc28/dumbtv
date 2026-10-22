@@ -75,7 +75,7 @@ final class Catalog {
         if (tv == null) return out;
         List<Item> other = new ArrayList<>();
         for (TvInputInfo in : tv.getTvInputList()) {
-            if (!in.isPassthroughInput() || in.isHidden(c)) continue;
+            if (!in.isPassthroughInput() || in.isHidden(c) || in.getParentId() != null) continue;
             CharSequence label = in.loadCustomLabel(c);
             if (TextUtils.isEmpty(label)) label = in.loadLabel(c);
             Intent view = new Intent(Intent.ACTION_VIEW,
