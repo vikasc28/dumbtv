@@ -115,7 +115,7 @@ public final class Options extends Activity {
             value.setTextColor(focused ? Ui.TEXT : Ui.MUTED);
             boolean off = (c == Config.DIM || c == Config.ROTATE)
                             && !"image".equals(cfg.get(Config.BACKGROUND))
-                    || c == Config.PANEL && !"grid".equals(cfg.get(Config.LAYOUT));
+                    || c == Config.PANEL && "row".equals(cfg.get(Config.LAYOUT));
             row.setAlpha(off ? 0.4f : 1f);
         };
         row.setOnFocusChangeListener((v, has) -> show.run());

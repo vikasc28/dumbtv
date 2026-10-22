@@ -206,7 +206,7 @@ Both appear in Options, right after Accent color:
 
 | Option | Key in `home.conf` | Values | Default |
 |---|---|---|---|
-| App layout | `layout` | `grid`, `row` | `grid` |
+| App layout | `layout` | `dock`, `grid`, `row` | `dock` |
 | Grid panel | `panel` | `on`, `off` | `on` |
 
 `row` restores upstream's sideways-scrolling strip exactly. Switching rebuilds
@@ -215,6 +215,25 @@ panel row dims when the layout is `row`, since it does not apply there.
 
 The Inputs row is deliberately left as a horizontal strip — there are rarely
 enough inputs to wrap.
+
+## 7. Dock layout (`Dock.java`)
+
+The Apple TV home, after [cleanyourtv](https://github.com/Gathin23/cleanyourtv)'s
+launcher, which cannot take HOME on Fire OS itself (its README: "the debloat half
+only"). Here it runs on top of fix 1.
+
+- The first four visible apps sit in a frosted band low on the screen; the rest
+  are in the grid below, reached with Down, which scrolls the page up to it.
+- Focusing a dock app shows its name large above the dock and tints a radial
+  glow behind it. The colour is the banner's average, raised to at least 75%
+  brightness so a dark banner still glows; it is computed once per app from a
+  16x9 draw of a copy of the banner and cached.
+- Left and right stop at the dock's ends rather than escaping to the chips.
+- Move works within the dock or within the grid, not across them; the saved
+  order is the dock followed by the grid.
+
+Not ported: the floating spring-animated glass highlight, the cinematic
+backdrop, themes and module cards. The dock is fixed at four tiles.
 
 ## Reset settings
 

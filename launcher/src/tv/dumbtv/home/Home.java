@@ -38,8 +38,10 @@ import android.widget.Toast;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -59,6 +61,10 @@ public final class Home extends Activity {
     private FrameLayout root;
     private ImageView wall;
     private View shade;
+    private Dock dock;
+    private TextView shelf;
+    private View glow;
+    private final Map<String, Integer> glows = new HashMap<>();
     private TextView clock, date;
     private Row apps, inputs;
     private Tile moving;
@@ -175,6 +181,8 @@ public final class Home extends Activity {
         cfg = Config.get(this);
         tv = (TvInputManager) getSystemService(Context.TV_INPUT_SERVICE);
         setContentView(build());
+        getWindow().getDecorView().getViewTreeObserver()
+                .addOnGlobalFocusChangeListener((was, now) -> onFocusMoved(now));
 
         IntentFilter f = new IntentFilter();
         f.addAction(Intent.ACTION_PACKAGE_ADDED);
@@ -407,6 +415,14 @@ public final class Home extends Activity {
         root.addView(wall, new FrameLayout.LayoutParams(MATCH, MATCH));
         shade = new View(this);
         root.addView(shade, new FrameLayout.LayoutParams(MATCH, MATCH));
+        dock = null;
+        shelf = null;
+        glow = null;
+        if (dockWanted()) {
+            glow = new View(this);
+            glow.setAlpha(0f);
+            root.addView(glow, new FrameLayout.LayoutParams(MATCH, MATCH));
+        }
 
         ScrollView scroll = new ScrollView(this) {
             /** Scrolls in whole rows: the focused row shows complete, and a row starts at the top edge. */
@@ -450,7 +466,7 @@ public final class Home extends Activity {
             @Override
             public View focusSearch(View focused, int direction) {
                 if (direction == View.FOCUS_DOWN && chips.contains(focused)) {
-                    View below = nearest(apps.strip, focused);
+                    View below = nearest(dock != null && dock.getChildCount() > 0 ? dock : apps.strip, focused);
                     if (below != null) return below;
                 }
                 return super.focusSearch(focused, direction);
@@ -477,13 +493,54 @@ public final class Home extends Activity {
         head.addView(chip("Settings", v -> openSettings()));
         column.addView(head, new LinearLayout.LayoutParams(MATCH, WRAP));
 
+        if (dockWanted()) {
+            int pad = dp(16);
+            shelf = Ui.text(this, 30, Ui.TEXT, Ui.LIGHT);
+            shelf.setGravity(Gravity.CENTER_HORIZONTAL);
+            shelf.setAlpha(0f);
+            int lift = getResources().getDisplayMetrics().heightPixels - dp(229) - 2 * pad - cardSize()[1];
+            LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(MATCH, WRAP);
+            slp.topMargin = Math.max(dp(16), lift);
+            slp.bottomMargin = dp(14);
+            column.addView(shelf, slp);
+            dock = new Dock(this, pad, dp(28));
+            LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(WRAP, WRAP);
+            dlp.gravity = Gravity.CENTER_HORIZONTAL;
+            column.addView(dock, dlp);
+        }
+
         apps = new Row(Catalog.APPS, "Apps", column, gridWanted());
         inputs = new Row(Catalog.INPUTS, "Inputs", column, false);
         return root;
     }
 
     private boolean gridWanted() {
-        return "grid".equals(cfg.get(Config.LAYOUT));
+        return !"row".equals(cfg.get(Config.LAYOUT));
+    }
+
+    private boolean dockWanted() {
+        return "dock".equals(cfg.get(Config.LAYOUT));
+    }
+
+    /** Dock focus names the app above the dock and tints the glow in its colour; elsewhere both fade. */
+    private void onFocusMoved(View now) {
+        if (shelf == null) return;
+        if (!(now instanceof Tile) || now.getParent() != dock) {
+            shelf.animate().alpha(0f).setDuration(120).start();
+            glow.animate().alpha(0.35f).setDuration(300).start();
+            return;
+        }
+        Item it = ((Tile) now).item;
+        shelf.setText(Catalog.label(cfg, it));
+        shelf.animate().alpha(1f).setDuration(160).start();
+        Integer c = glows.get(it.id);
+        if (c == null && (it.banner != null || it.icon != null)) {
+            c = Dock.glowColor(it);
+            glows.put(it.id, c);
+        }
+        glow.setBackground(Dock.glow(c == null ? 0xFF8A8B8F : c,
+                getResources().getDisplayMetrics().widthPixels * 0.55f));
+        glow.animate().alpha(1f).setDuration(300).start();
     }
 
     /** The child of {@code strip} on its first line horizontally closest to {@code from}. */
@@ -530,7 +587,7 @@ public final class Home extends Activity {
 
     private void apply() {
         applied = cfg.version();
-        if ((apps.grid != null) != gridWanted()) rebuild();
+        if ((apps.grid != null) != gridWanted() || (dock != null) != dockWanted()) rebuild();
         if (apps.grid != null) {
             apps.grid.setBackground(
                     "on".equals(cfg.get(Config.PANEL)) ? Ui.glass(this, dp(28)) : null);
@@ -541,6 +598,7 @@ public final class Home extends Activity {
         render(inputs);
         background();
         tick();
+        if (dock != null) ui.post(() -> onFocusMoved(getCurrentFocus()));
     }
 
     /** Rebuilds the view tree when the apps layout switches between grid and row. */
@@ -586,6 +644,8 @@ public final class Home extends Activity {
         String keep = focused instanceof Tile && ((Tile) focused).kind.equals(row.kind)
                 ? ((Tile) focused).item.id : null;
         row.strip.removeAllViews();
+        boolean docked = dock != null && Catalog.APPS.equals(row.kind);
+        if (docked) dock.removeAllViews();
 
         boolean enabled = !Catalog.INPUTS.equals(row.kind) || "on".equals(cfg.get(Config.INPUTS));
         List<Item> shown = enabled ? Catalog.visible(cfg, row.kind, row.all) : new ArrayList<>();
@@ -593,7 +653,8 @@ public final class Home extends Activity {
         int w = size[0], h = Catalog.APPS.equals(row.kind) ? size[1] : Math.round(size[1] * 0.56f);
         String labels = cfg.get(Config.LABELS);
         int accent = cfg.accent();
-        int index = 0, restore = -1;
+        int index = 0, restore = -1, inDock = docked ? Math.min(Dock.SIZE, shown.size()) : 0;
+        List<Tile> made = new ArrayList<>();
         for (Item it : shown) {
             Tile t = new Tile(this, it, row.kind, Catalog.label(cfg, it), w, h, labels, accent);
             t.setOnClickListener(v -> open((Tile) v));
@@ -602,17 +663,27 @@ public final class Home extends Activity {
                 return true;
             });
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(WRAP, WRAP);
-            lp.rightMargin = row.grid == null ? dp(18) : 0;
-            row.strip.addView(t, lp);
+            if (index < inDock) {
+                lp.rightMargin = index < inDock - 1 ? dp(18) : 0;
+                dock.addView(t, lp);
+            } else {
+                lp.rightMargin = row.grid == null ? dp(18) : 0;
+                row.strip.addView(t, lp);
+            }
+            made.add(t);
             if (it.id.equals(keep)) restore = index;
             index++;
             if (Catalog.APPS.equals(row.kind) && !it.artRequested) loadArt(it);
         }
-        row.setVisible(!shown.isEmpty());
+        row.setVisible(shown.size() > inDock);
+        if (docked) {
+            dock.setVisibility(inDock > 0 ? View.VISIBLE : View.GONE);
+            shelf.setVisibility(inDock > 0 ? View.VISIBLE : View.GONE);
+        }
         if (restore >= 0) {
-            row.strip.getChildAt(restore).requestFocus();
-        } else if (keep != null && row.strip.getChildCount() > 0) {
-            row.strip.getChildAt(0).requestFocus();
+            made.get(restore).requestFocus();
+        } else if (keep != null && !made.isEmpty()) {
+            made.get(0).requestFocus();
         } else if (getCurrentFocus() == null || !landed) {
             focusFirst();
         }
@@ -624,6 +695,10 @@ public final class Home extends Activity {
             Catalog.art(getPackageManager(), it);
             ui.post(() -> {
                 for (int i = 0; i < apps.strip.getChildCount(); i++) apps.strip.getChildAt(i).invalidate();
+                if (dock != null) {
+                    for (int i = 0; i < dock.getChildCount(); i++) dock.getChildAt(i).invalidate();
+                    onFocusMoved(getCurrentFocus());
+                }
             });
         });
     }
@@ -642,9 +717,9 @@ public final class Home extends Activity {
     private void focusFirst() {
         if (apps.scroll != null) apps.scroll.scrollTo(0, 0);
         if (inputs.scroll != null) inputs.scroll.scrollTo(0, 0);
-        View first = apps.strip.getChildAt(0);
+        View first = dock != null && dock.getChildCount() > 0 ? dock.getChildAt(0) : apps.strip.getChildAt(0);
         if (first == null) first = inputs.strip.getChildAt(0);
-        landed = apps.strip.getChildCount() > 0;
+        landed = first != null && Catalog.APPS.equals(((Tile) first).kind);
         if (first == null) first = chips.get(0);
         first.requestFocus();
     }
@@ -783,6 +858,7 @@ public final class Home extends Activity {
     }
 
     private void shift(int by) {
+        // ponytail: stays inside one strip, so Move cannot carry a tile between dock and grid.
         ViewGroup strip = (ViewGroup) moving.getParent();
         int from = strip.indexOfChild(moving), to = from + by;
         if (to < 0 || to >= strip.getChildCount()) return;
@@ -799,7 +875,10 @@ public final class Home extends Activity {
         ViewGroup strip = (ViewGroup) t.getParent();
         if (strip == null) return;
         List<String> ids = new ArrayList<>();
-        for (int i = 0; i < strip.getChildCount(); i++) ids.add(((Tile) strip.getChildAt(i)).item.id);
+        boolean both = dock != null && Catalog.APPS.equals(t.kind);
+        for (ViewGroup s : both ? new ViewGroup[] {dock, apps.strip} : new ViewGroup[] {strip}) {
+            for (int i = 0; i < s.getChildCount(); i++) ids.add(((Tile) s.getChildAt(i)).item.id);
+        }
         Catalog.saveOrder(cfg, t.kind, ids);
         applied = cfg.version();
     }

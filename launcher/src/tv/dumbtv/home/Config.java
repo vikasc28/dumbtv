@@ -59,9 +59,9 @@ final class Config {
     static final Choice TILES = new Choice("tiles", "Tile size", "medium",
             new String[] {"small", "medium", "large"},
             new String[] {"Small", "Medium", "Large"});
-    static final Choice LAYOUT = new Choice("layout", "App layout", "grid",
-            new String[] {"grid", "row"},
-            new String[] {"Grid", "Row"});
+    static final Choice LAYOUT = new Choice("layout", "App layout", "dock",
+            new String[] {"grid", "dock", "row"},
+            new String[] {"Grid", "Dock", "Row"});
     static final Choice PANEL = new Choice("panel", "Grid panel", "on",
             new String[] {"on", "off"},
             new String[] {"Shown", "Hidden"});
