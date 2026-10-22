@@ -1,43 +1,17 @@
 package tv.dumbtv.home;
 
-import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
-import android.view.Gravity;
-import android.view.View;
-import android.widget.LinearLayout;
 
-/**
- * The Apple TV-style dock: the first apps in a frosted band. Left and right stop at its ends
- * instead of escaping to whatever lies geometrically beyond, the way the Grid wraps.
- */
-final class Dock extends LinearLayout {
-    static final int SIZE = 4;
-
-    Dock(Context c, int pad, float radius) {
-        super(c);
-        setOrientation(HORIZONTAL);
-        setGravity(Gravity.CENTER);
-        setClipChildren(false);
-        setClipToPadding(false);
-        setPadding(pad, pad, pad, pad);
-        setBackground(Ui.glass(c, radius));
-    }
-
-    @Override
-    public View focusSearch(View focused, int direction) {
-        int i = indexOfChild(focused);
-        if (i >= 0 && (direction == FOCUS_LEFT && i == 0 || direction == FOCUS_RIGHT && i == getChildCount() - 1)) {
-            return focused;
-        }
-        return super.focusSearch(focused, direction);
-    }
+/** The dock layout's ambient glow, tinted by the focused app's banner. */
+final class Glow {
+    private Glow() {}
 
     /** The banner's average colour, lifted so a dark banner still gives a visible glow. */
-    static int glowColor(Item it) {
+    static int color(Item it) {
         Drawable d = it.banner != null ? it.banner : it.icon;
         if (d == null || d.getConstantState() == null) return 0xFF8A8B8F;
         Drawable copy = d.getConstantState().newDrawable().mutate();
@@ -64,12 +38,12 @@ final class Dock extends LinearLayout {
         return Color.HSVToColor(hsv);
     }
 
-    /** A soft radial wash centred low on the screen, behind the dock. */
+    /** A soft radial wash centred low on the screen, behind the apps. */
     static GradientDrawable glow(int color, float radius) {
         GradientDrawable d = new GradientDrawable();
         d.setGradientType(GradientDrawable.RADIAL_GRADIENT);
         d.setColors(new int[] {(color & 0x00FFFFFF) | 0x59000000, 0x00000000});
-        d.setGradientCenter(0.5f, 0.78f);
+        d.setGradientCenter(0.5f, 0.7f);
         d.setGradientRadius(radius);
         return d;
     }

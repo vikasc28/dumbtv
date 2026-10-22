@@ -216,26 +216,23 @@ panel row dims when the layout is `row`, since it does not apply there.
 The Inputs row is deliberately left as a horizontal strip — there are rarely
 enough inputs to wrap.
 
-## 7. Dock layout (`Dock.java`)
+## 7. Dock layout (`Glow.java`)
 
 The Apple TV home, after [cleanyourtv](https://github.com/Gathin23/cleanyourtv)'s
 launcher, which cannot take HOME on Fire OS itself (its README: "the debloat half
 only"). Here it runs on top of fix 1.
 
-- The first four visible apps sit in a frosted band low on the screen; the rest
-  are in the grid below, reached with Down, which scrolls the page up to it.
-- Focusing a dock app shows its name large above the dock and tints a radial
-  glow behind it. The colour is the banner's average, raised to at least 75%
+- All apps sit in the one frosted grid panel, pushed to the bottom of the screen
+  by a flexible spacer and without the `APPS` title, so nothing scrolls until the
+  apps are taller than the screen. Its first line plays the dock. A separate dock
+  band was tried first and dropped: its tiles were spaced differently from the
+  grid's, Right did not wrap into the grid, and it needed a second panel.
+- Focusing any app shows its name large above the panel and tints a radial glow
+  behind it. The colour is the banner's average, raised to at least 75%
   brightness so a dark banner still glows; it is computed once per app from a
   16x9 draw of a copy of the banner and cached.
-- Left and right stop at the dock's ends rather than escaping to the chips.
-- Move works within the dock or within the grid, not across them; the saved
-  order is the dock followed by the grid.
-- The dock sits at the bottom of the first screen and the grid directly below it,
-  without the `APPS` title. A flexible spacer above the app name takes whatever
-  height is left, so nothing scrolls until the content is taller than the screen.
-  At 1080p with medium tiles that means the dock plus one grid line; a second line
-  scrolls, since the two lines need about 120 dp more than is free.
+- Navigation and Move are the grid's (fix 4): Right from the end of a line wraps.
+- At 1080p with medium tiles two lines fit; a third scrolls.
 
 ## 8. Inputs dropdown
 
