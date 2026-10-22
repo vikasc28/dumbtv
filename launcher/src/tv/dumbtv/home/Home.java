@@ -63,7 +63,7 @@ public final class Home extends Activity {
     private FrameLayout root;
     private ImageView wall;
     private View shade;
-    private TextView shelf;
+    private TextView shelf, inputsChip;
     private View glow;
     private final Map<String, Integer> glows = new HashMap<>();
     private TextView clock, date;
@@ -466,7 +466,7 @@ public final class Home extends Activity {
         LinearLayout column = new LinearLayout(this) {
             @Override
             public View focusSearch(View focused, int direction) {
-                if (direction == View.FOCUS_LEFT && !chips.isEmpty() && focused == chips.get(0)) return focused;
+                if (direction == View.FOCUS_LEFT && focused == firstChip()) return focused;
                 if (direction == View.FOCUS_DOWN && chips.contains(focused)) {
                     View below = nearest(apps.strip, focused);
                     if (below != null) return below;
@@ -491,7 +491,7 @@ public final class Home extends Activity {
         when.addView(clock);
         when.addView(date);
         head.addView(when, new LinearLayout.LayoutParams(0, WRAP, 1f));
-        TextView inputsChip = chip("Inputs", null);
+        inputsChip = chip("Inputs", null);
         inputsChip.setOnClickListener(v -> inputsMenu(v));
         head.addView(inputsChip);
         head.addView(chip("Options", v -> startActivity(new Intent(this, Options.class))));
@@ -520,6 +520,14 @@ public final class Home extends Activity {
 
     private boolean dockWanted() {
         return "dock".equals(cfg.get(Config.LAYOUT));
+    }
+
+    /** The leftmost chip on screen: Inputs, or Options when Inputs is turned off. */
+    private TextView firstChip() {
+        for (TextView c : chips) {
+            if (c.getVisibility() == View.VISIBLE) return c;
+        }
+        return chips.get(0);
     }
 
     /** A focused app is named above the grid and tints the glow in its colour; elsewhere both fade. */
@@ -594,6 +602,7 @@ public final class Home extends Activity {
         }
         int accent = cfg.accent();
         for (TextView c : chips) Ui.focusStyle(c, accent, 0x14FFFFFF, dp(18));
+        inputsChip.setVisibility("on".equals(cfg.get(Config.INPUTS)) ? View.VISIBLE : View.GONE);
         render(apps);
         render(inputs);
         background();
@@ -710,7 +719,7 @@ public final class Home extends Activity {
         View first = apps.strip.getChildAt(0);
         if (first == null) first = inputs.strip.getChildAt(0);
         landed = apps.strip.getChildCount() > 0;
-        if (first == null) first = chips.get(0);
+        if (first == null) first = firstChip();
         first.requestFocus();
     }
 
