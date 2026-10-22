@@ -231,6 +231,17 @@ only"). Here it runs on top of fix 1.
 - Left and right stop at the dock's ends rather than escaping to the chips.
 - Move works within the dock or within the grid, not across them; the saved
   order is the dock followed by the grid.
+- The dock sits at the bottom of the first screen and the grid directly below it,
+  without the `APPS` title. A flexible spacer above the app name takes whatever
+  height is left, so nothing scrolls until the content is taller than the screen.
+  At 1080p with medium tiles that means the dock plus one grid line; a second line
+  scrolls, since the two lines need about 120 dp more than is free.
+
+## 8. Inputs dropdown
+
+The Inputs row is gone in every layout. An `Inputs` chip left of Options opens a
+`ListPopupWindow` anchored under it, with a dot after each connected input. Left
+from that chip stays put instead of dropping into the dock.
 
 Not ported: the floating spring-animated glass highlight, the cinematic
 backdrop, themes and module cards. The dock is fixed at four tiles.

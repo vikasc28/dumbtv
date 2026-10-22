@@ -26,11 +26,13 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ListPopupWindow;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -135,6 +137,7 @@ public final class Home extends Activity {
                 container = grid;
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(MATCH, WRAP);
                 lp.leftMargin = inset;
+                lp.topMargin = dock != null ? dp(12) : 0;
                 lp.rightMargin = inset;
                 parent.addView(grid, lp);
                 return;
@@ -169,7 +172,7 @@ public final class Home extends Activity {
 
         void setVisible(boolean on) {
             int v = on ? View.VISIBLE : View.GONE;
-            title.setVisibility(v);
+            title.setVisibility(on && !(this == apps && dock != null) ? View.VISIBLE : View.GONE);
             container.setVisibility(v);
         }
     }
@@ -384,7 +387,7 @@ public final class Home extends Activity {
     private void fitBottom(ScrollView page) {
         View content = page.getChildAt(0);
         if (content == null || page.getHeight() == 0) return;
-        int base = dp(32), height = page.getHeight();
+        int base = dock != null ? dp(16) : dp(32), height = page.getHeight();
         int natural = content.getHeight() - content.getPaddingBottom() + base;
         int want = base;
         if (natural > height) {
@@ -465,6 +468,7 @@ public final class Home extends Activity {
         LinearLayout column = new LinearLayout(this) {
             @Override
             public View focusSearch(View focused, int direction) {
+                if (direction == View.FOCUS_LEFT && !chips.isEmpty() && focused == chips.get(0)) return focused;
                 if (direction == View.FOCUS_DOWN && chips.contains(focused)) {
                     View below = nearest(dock != null && dock.getChildCount() > 0 ? dock : apps.strip, focused);
                     if (below != null) return below;
@@ -489,19 +493,22 @@ public final class Home extends Activity {
         when.addView(clock);
         when.addView(date);
         head.addView(when, new LinearLayout.LayoutParams(0, WRAP, 1f));
+        TextView inputsChip = chip("Inputs", null);
+        inputsChip.setOnClickListener(v -> inputsMenu(v));
+        head.addView(inputsChip);
         head.addView(chip("Options", v -> startActivity(new Intent(this, Options.class))));
         head.addView(chip("Settings", v -> openSettings()));
         column.addView(head, new LinearLayout.LayoutParams(MATCH, WRAP));
 
         if (dockWanted()) {
-            int pad = dp(16);
-            shelf = Ui.text(this, 30, Ui.TEXT, Ui.LIGHT);
+            int pad = dp(12);
+            column.setPadding(0, dp(24), 0, dp(16));
+            column.addView(new View(this), new LinearLayout.LayoutParams(MATCH, 0, 1f));
+            shelf = Ui.text(this, 26, Ui.TEXT, Ui.LIGHT);
             shelf.setGravity(Gravity.CENTER_HORIZONTAL);
             shelf.setAlpha(0f);
-            int lift = getResources().getDisplayMetrics().heightPixels - dp(229) - 2 * pad - cardSize()[1];
             LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(MATCH, WRAP);
-            slp.topMargin = Math.max(dp(16), lift);
-            slp.bottomMargin = dp(14);
+            slp.bottomMargin = dp(8);
             column.addView(shelf, slp);
             dock = new Dock(this, pad, dp(28));
             LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(WRAP, WRAP);
@@ -639,6 +646,11 @@ public final class Home extends Activity {
     }
 
     private void render(Row row) {
+        if (row == inputs) {
+            row.strip.removeAllViews();
+            row.setVisible(false);
+            return;
+        }
         if (moving != null && moving.kind.equals(row.kind)) stopMoving();
         View focused = getCurrentFocus();
         String keep = focused instanceof Tile && ((Tile) focused).kind.equals(row.kind)
@@ -789,6 +801,33 @@ public final class Home extends Activity {
 
     private void open(Tile t) {
         launch(new Intent(t.item.intent), Catalog.APPS.equals(t.kind) ? t.item.id : null);
+    }
+
+    /** The inputs as a dropdown under the Inputs chip, a dot marking the connected ones. */
+    private void inputsMenu(View anchor) {
+        List<Item> shown = "on".equals(cfg.get(Config.INPUTS))
+                ? Catalog.visible(cfg, Catalog.INPUTS, inputs.all) : new ArrayList<>();
+        if (shown.isEmpty()) {
+            Toast.makeText(this, "No inputs", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        List<String> names = new ArrayList<>();
+        for (Item it : shown) {
+            boolean on = it.state == TvInputManager.INPUT_STATE_CONNECTED;
+            names.add(Catalog.label(cfg, it) + (on ? "   \u25CF" : ""));
+        }
+        ListPopupWindow pop = new ListPopupWindow(this);
+        pop.setAnchorView(anchor);
+        pop.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, names));
+        pop.setWidth(dp(260));
+        pop.setModal(true);
+        pop.setBackgroundDrawable(Ui.round(Ui.SURFACE, dp(14)));
+        pop.setOnItemClickListener((parent, view, which, id) -> {
+            pop.dismiss();
+            launch(new Intent(shown.get(which).intent), null);
+        });
+        pop.show();
+        pop.getListView().requestFocus();
     }
 
     private void launch(Intent i, String pkg) {
