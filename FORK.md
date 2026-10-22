@@ -260,6 +260,14 @@ The Inputs row is gone in every layout. An `Inputs` chip left of Options opens a
 from that chip stays put instead of dropping into the dock. The `Inputs` option
 (`inputs=off`) hides the chip, for a stick with nothing plugged into HDMI.
 
+Picking an input opens `Watch.java`, which plays it full screen in a `TvView`.
+Upstream fired `ACTION_VIEW` on the passthrough channel URI, which nothing on Fire
+OS answers ("Could not open that"); Amazon's own switcher answers
+`tvinput://tunenow?inputId=...` but requires `com.amazon.tv.permission.TUNE_INPUT`,
+which is `signature|amazon`. Watch starts without NEW_TASK/RESET_TASK flags: with
+them it closed straight away on the TV (most likely because it joined the
+singleTask launcher's task). Back returns home.
+
 Not ported: the floating spring-animated glass highlight, the cinematic
 backdrop, themes and module cards. The dock is fixed at four tiles.
 

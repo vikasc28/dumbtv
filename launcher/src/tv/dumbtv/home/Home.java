@@ -811,7 +811,7 @@ public final class Home extends Activity {
         pop.setBackgroundDrawable(Ui.round(Ui.SURFACE, dp(14)));
         pop.setOnItemClickListener((parent, view, which, id) -> {
             pop.dismiss();
-            launch(new Intent(shown.get(which).intent), null);
+            startActivity(new Intent(this, Watch.class).putExtra(Watch.INPUT, shown.get(which).id));
         });
         pop.show();
         pop.getListView().requestFocus();
