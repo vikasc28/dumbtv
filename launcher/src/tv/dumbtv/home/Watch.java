@@ -49,6 +49,11 @@ public final class Watch extends Activity {
     }
 
     @Override
+    protected void onUserLeaveHint() {
+        Guard.leaving();
+    }
+
+    @Override
     protected void onStop() {
         super.onStop();
         if (view != null) view.reset();

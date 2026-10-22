@@ -59,7 +59,7 @@ public final class Home extends Activity {
     private Config cfg;
     private TvInputManager tv;
     private int applied = -1, appsGeneration;
-    private boolean resumed, landed;
+    private boolean resumed, landed, starting;
     private FrameLayout root;
     private ImageView wall;
     private View shade;
@@ -232,6 +232,7 @@ public final class Home extends Activity {
     protected void onResume() {
         super.onResume();
         resumed = true;
+        starting = false;
         Guard.arrived(this);
         cfg.refresh();
         cfg.visited();
@@ -247,6 +248,23 @@ public final class Home extends Activity {
     @Override
     public void onEnterAnimationComplete() {
         Guard.shown();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean focus) {
+        if (focus) Guard.shown();
+    }
+
+    /** Every start from here passes through this, so a leave hint without one is HOME. */
+    @Override
+    public void startActivityForResult(Intent i, int code, Bundle options) {
+        starting = true;
+        super.startActivityForResult(i, code, options);
+    }
+
+    @Override
+    protected void onUserLeaveHint() {
+        if (!starting) Guard.leaving();
     }
 
     @Override
@@ -752,13 +770,16 @@ public final class Home extends Activity {
         wallKey = key;
         if (file == null) {
             wall.setImageDrawable(null);
+            Guard.backdrop(null);
             return;
         }
         io.execute(() -> {
             Bitmap b = decode(file, getResources().getDisplayMetrics().widthPixels,
                     getResources().getDisplayMetrics().heightPixels);
             ui.post(() -> {
-                if (key.equals(wallKey)) wall.setImageBitmap(b);
+                if (!key.equals(wallKey)) return;
+                wall.setImageBitmap(b);
+                Guard.backdrop(b);
             });
         });
     }

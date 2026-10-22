@@ -52,6 +52,21 @@ Upstream's `verify.sh` says the same thing. Press HOME on the physical remote.
 Likewise, `AmazonProfileService: shouldAbortActivityStart()` in logcat is a red
 herring — read the next line, which says *"do not abort activity start"*.
 
+**No Amazon flash on HOME.** Upstream covers Amazon's home with a plain overlay,
+but only once Amazon's window-state event arrives, which is after it has drawn,
+so a frame or more of Amazon showed every time. The Guard now raises the cover
+early where HOME can be seen coming: `onUserLeaveHint` on our Home (when no
+start of ours caused it) and on `Watch`, and on screen-off over our Home, since a
+remote or HDMI-CEC wake can land on Amazon's home. The cover shows the current
+wallpaper and dim, handed over by Home, so the switch looks like the wallpaper
+drawing first and the tiles following. Measured on the stick: HOME -> leave hint
+-> cover drawn in 20 ms, Amazon resumes 30 ms later under it, our home 0.4 s
+after, no Amazon frame in a 20 fps screenrecord. An app other than ours in front
+still gets the late cover; nothing can see that HOME before Amazon draws.
+
+The TV also needs `min_futurity=0` in `alarm_manager_constants` (`install.sh`
+sets it); without it Amazon's home stayed up ~3 s on the TV.
+
 ## 2. Wrapping grid (`Grid.java`)
 
 Upstream draws the apps row as a `HorizontalScrollView` + `LinearLayout`, which
